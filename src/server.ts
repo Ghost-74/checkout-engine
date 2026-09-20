@@ -11,7 +11,7 @@ app.get("/", (req, res) => {
   });
 });
 
-//testing db
+//testin' the db
 app.get("/test-db", async (req, res) => {
   const { data, error } = await supabase
     .from("orders")
@@ -26,7 +26,7 @@ app.get("/test-db", async (req, res) => {
   res.json(data);
 });
 
-//creating order
+//creatin' order
 app.post("/orders", async (req, res) => {
   const { customerName, productName, quantity, totalAmount } = req.body;
 
@@ -52,11 +52,64 @@ app.post("/orders", async (req, res) => {
   res.status(201).json(data);
 });
 
-//fetchin' orders
+//fetchin' orders while also filterin'
 app.get("/orders", async (req, res) => {
-  const { data, error } = await supabase
+  const status = req.query.status as string | undefined;
+
+  let query = supabase
     .from("orders")
     .select("*");
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+
+  res.json(data);
+});
+
+//specific order findin'
+
+app.get("/orders/:order_id", async (req, res) => {
+  const { order_id } = req.params;
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("order_id", order_id)
+    .single();
+
+  if (error) {
+    return res.status(404).json({
+      error: "Order not found"
+    });
+  }
+
+  res.json(data);
+});
+
+//updatin' orders
+
+app.patch("/orders/:order_id", async (req, res) => {
+  const { order_id } = req.params;
+  const { status } = req.body;
+
+  const { data, error } = await supabase
+    .from("orders")
+    .update({
+      status: status,
+      updated_at: new Date().toISOString()
+    })
+    .eq("order_id", order_id)
+    .select()
+    .single();
 
   if (error) {
     return res.status(500).json({
