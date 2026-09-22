@@ -96,7 +96,7 @@ app.get("/orders", async (req, res) => {
 //specific order findin'
 
 app.get("/orders/:order_id", async (req, res) => {
-  const { order_id } = req.params;
+  const { order_id }: { order_id: string } = req.params;
 
    if (!isUuid(order_id)) {
     return res.status(400).json({
