@@ -1,5 +1,9 @@
 import express from "express";
 import { supabase } from "./supabase.js";
+import type { OrderDetails } from "./types.js";
+import { isOrderStatus } from "./types.js";
+import { isOrderDetails } from "./types.js";
+import { isUuid } from "./types.js";
 
 const app = express();
 
@@ -28,16 +32,24 @@ app.get("/test-db", async (req, res) => {
 
 //creatin' order
 app.post("/orders", async (req, res) => {
-  const { customerName, productName, quantity, totalAmount } = req.body;
+
+  const body: unknown = req.body;
+
+  if (!isOrderDetails(body)) {
+    return res.status(400).json({
+      error: "Invalid order data"
+    });
+  }
+  const orderDetails:OrderDetails = body;
 
   const { data, error } = await supabase
     .from("orders")
     .insert([
       {
-        customer_name: customerName,
-        product_name: productName,
-        quantity: quantity,
-        total_amount: totalAmount
+        customer_name: orderDetails.customerName,
+        product_name: orderDetails.productName,
+        quantity: orderDetails.quantity,
+        total_amount: orderDetails.totalAmount
       }
     ])
     .select()
@@ -54,14 +66,20 @@ app.post("/orders", async (req, res) => {
 
 //fetchin' orders while also filterin'
 app.get("/orders", async (req, res) => {
-  const status = req.query.status as string | undefined;
+  const rawStatus = req.query.status;
 
   let query = supabase
     .from("orders")
     .select("*");
 
-  if (status) {
-    query = query.eq("status", status);
+  if (rawStatus !== undefined) {
+    if (typeof rawStatus !== "string" || !isOrderStatus(rawStatus)) {
+      return res.status(400).json({
+        error: "Invalid order status"
+      });
+    }
+
+    query = query.eq("status", rawStatus);
   }
 
   const { data, error } = await query;
@@ -79,6 +97,12 @@ app.get("/orders", async (req, res) => {
 
 app.get("/orders/:order_id", async (req, res) => {
   const { order_id } = req.params;
+
+   if (!isUuid(order_id)) {
+    return res.status(400).json({
+      error: "Invalid order ID"
+    });
+  }
 
   const { data, error } = await supabase
     .from("orders")
@@ -99,7 +123,20 @@ app.get("/orders/:order_id", async (req, res) => {
 
 app.patch("/orders/:order_id", async (req, res) => {
   const { order_id } = req.params;
-  const { status } = req.body;
+
+   if (!isUuid(order_id)) {
+    return res.status(400).json({
+      error: "Invalid order ID"
+    });
+  }
+
+  const status: unknown = req.body.status;
+
+  if (!isOrderStatus(status)) {
+    return res.status(400).json({
+      error: "Invalid order status"
+    });
+  }
 
   const { data, error } = await supabase
     .from("orders")
